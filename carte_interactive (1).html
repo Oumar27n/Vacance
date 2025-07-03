@@ -1,0 +1,125 @@
+
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <title>Carte Interactive Vacances</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <style>
+        html, body, #map {
+            height: 100%;
+            margin: 0;
+            padding: 0;
+        }
+        #formulaire {
+            position: absolute;
+            top: 10px;
+            left: 10px;
+            z-index: 1000;
+            background: white;
+            padding: 10px;
+            border-radius: 8px;
+            box-shadow: 0 0 5px rgba(0,0,0,0.3);
+            max-width: 300px;
+        }
+        input, textarea {
+            width: 100%;
+            margin-bottom: 5px;
+        }
+        img {
+            max-width: 100%;
+            height: auto;
+        }
+    </style>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
+</head>
+<body>
+    <div id="formulaire">
+        <h3>Ajouter un lieu</h3>
+        <input type="text" id="nom" placeholder="Nom du lieu" required><br>
+        <textarea id="commentaire" placeholder="Commentaire"></textarea><br>
+        <input type="file" id="photo" accept="image/*" capture="environment"><br>
+        <p><em>Cliquez sur la carte pour placer le marqueur</em></p>
+    </div>
+    <div id="map"></div>
+
+    <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
+    <script>
+        const map = L.map('map').fitWorld();
+
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            attribution: '&copy; OpenStreetMap contributors'
+        }).addTo(map);
+
+        function onLocationFound(e) {
+            map.setView(e.latlng, 13);
+        }
+
+        function onLocationError(e) {
+            map.setView([48.8566, 2.3522], 5); // fallback to Paris
+        }
+
+        map.on('locationfound', onLocationFound);
+        map.on('locationerror', onLocationError);
+        map.locate({setView: true, maxZoom: 13});
+
+        function loadMarkers() {
+            const data = JSON.parse(localStorage.getItem("lieux") || "[]");
+            data.forEach(item => {
+                const marker = L.marker(item.latlng).addTo(map);
+                let html = `<b>${item.nom}</b><br>${item.commentaire}`;
+                if (item.image) {
+                    html += `<br><img src="${item.image}" alt="photo">`;
+                }
+                marker.bindPopup(html);
+            });
+        }
+
+        function saveMarker(markerData) {
+            const data = JSON.parse(localStorage.getItem("lieux") || "[]");
+            data.push(markerData);
+            localStorage.setItem("lieux", JSON.stringify(data));
+        }
+
+        map.on('click', function(e) {
+            const nom = document.getElementById("nom").value.trim();
+            const commentaire = document.getElementById("commentaire").value.trim();
+            const photoInput = document.getElementById("photo");
+            if (!nom) {
+                alert("Veuillez entrer un nom de lieu.");
+                return;
+            }
+
+            const reader = new FileReader();
+            reader.onload = function(event) {
+                const imageData = event.target.result;
+                const marker = L.marker(e.latlng).addTo(map);
+                let html = `<b>${nom}</b><br>${commentaire}`;
+                if (imageData) {
+                    html += `<br><img src="${imageData}" alt="photo">`;
+                }
+                marker.bindPopup(html).openPopup();
+
+                saveMarker({
+                    nom: nom,
+                    commentaire: commentaire,
+                    image: imageData,
+                    latlng: e.latlng
+                });
+
+                document.getElementById("nom").value = "";
+                document.getElementById("commentaire").value = "";
+                document.getElementById("photo").value = "";
+            };
+
+            if (photoInput.files.length > 0) {
+                reader.readAsDataURL(photoInput.files[0]);
+            } else {
+                reader.onload({target: {result: null}});
+            }
+        });
+
+        loadMarkers();
+    </script>
+</body>
+</html>
