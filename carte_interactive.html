@@ -1,0 +1,86 @@
+
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Carte interactive de vacances</title>
+    <meta charset="utf-8" />
+    <style>
+        #map { height: 90vh; width: 100%; }
+        #formulaire {
+            padding: 10px;
+            background: #f9f9f9;
+            border-bottom: 1px solid #ccc;
+        }
+        input, textarea {
+            margin: 5px;
+        }
+    </style>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.3/dist/leaflet.css" />
+</head>
+<body>
+    <div id="formulaire">
+        <input type="text" id="lieu" placeholder="Nom du lieu" />
+        <textarea id="commentaire" placeholder="Commentaire"></textarea>
+        <input type="file" id="photo" accept="image/*" capture="environment" />
+        <button onclick="enableAddMarker()">Ajouter un lieu</button>
+    </div>
+    <div id="map"></div>
+
+    <script src="https://unpkg.com/leaflet@1.9.3/dist/leaflet.js"></script>
+    <script>
+        let map = L.map('map').setView([0, 0], 2);
+        let addingMarker = false;
+
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            maxZoom: 19
+        }).addTo(map);
+
+        // Géolocalisation automatique
+        if (navigator.geolocation) {
+            navigator.geolocation.getCurrentPosition(function(position) {
+                const lat = position.coords.latitude;
+                const lon = position.coords.longitude;
+                map.setView([lat, lon], 13);
+                L.circle([lat, lon], {radius: 50, color: 'blue'}).addTo(map).bindPopup("Vous êtes ici").openPopup();
+            });
+        }
+
+        function enableAddMarker() {
+            addingMarker = true;
+            alert("Cliquez sur la carte pour ajouter un marqueur.");
+        }
+
+        map.on('click', function(e) {
+            if (!addingMarker) return;
+
+            const nom = document.getElementById("lieu").value;
+            const commentaire = document.getElementById("commentaire").value;
+            const fichier = document.getElementById("photo").files[0];
+
+            if (!nom || !commentaire) {
+                alert("Veuillez remplir le nom et le commentaire.");
+                return;
+            }
+
+            if (fichier) {
+                const reader = new FileReader();
+                reader.onload = function(event) {
+                    const imageUrl = event.target.result;
+                    const popupContent = `<b>${nom}</b><br>${commentaire}<br><img src="${imageUrl}" width="200"/>`;
+                    L.marker(e.latlng).addTo(map).bindPopup(popupContent);
+                };
+                reader.readAsDataURL(fichier);
+            } else {
+                const popupContent = `<b>${nom}</b><br>${commentaire}`;
+                L.marker(e.latlng).addTo(map).bindPopup(popupContent);
+            }
+
+            // Réinitialiser le formulaire
+            document.getElementById("lieu").value = "";
+            document.getElementById("commentaire").value = "";
+            document.getElementById("photo").value = "";
+            addingMarker = false;
+        });
+    </script>
+</body>
+</html>
